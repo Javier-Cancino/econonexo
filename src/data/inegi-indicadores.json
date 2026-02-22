@@ -1,0 +1,144 @@
+{
+  "indicadores": [
+    {
+      "id": "1002000001",
+      "nombre": "Población total",
+      "tema": "Población y sociedad",
+      "unidad": "Personas",
+      "frecuencia": "Anual"
+    },
+    {
+      "id": "1002000002",
+      "nombre": "Población total, hombres",
+      "tema": "Población y sociedad",
+      "unidad": "Personas",
+      "frecuencia": "Anual"
+    },
+    {
+      "id": "1002000003",
+      "nombre": "Población total, mujeres",
+      "tema": "Población y sociedad",
+      "unidad": "Personas",
+      "frecuencia": "Anual"
+    },
+    {
+      "id": "628474",
+      "nombre": "Producto Interno Bruto (PIB) a precios constantes",
+      "tema": "Cuentas económicas",
+      "unidad": "Millones de pesos",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "492230",
+      "nombre": "PIB a precios constantes, variación anual",
+      "tema": "Cuentas económicas",
+      "unidad": "Porcentaje",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "628472",
+      "nombre": "PIB a precios corrientes",
+      "tema": "Cuentas económicas",
+      "unidad": "Millones de pesos",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "628222",
+      "nombre": "Inflación - Índice Nacional de Precios al Consumidor (INPC)",
+      "tema": "Precios e inflación",
+      "unidad": "Índice",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "628221",
+      "nombre": "Inflación mensual (INPC)",
+      "tema": "Precios e inflación",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "628220",
+      "nombre": "Inflación anual (INPC)",
+      "tema": "Precios e inflación",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "531418",
+      "nombre": "Tasa de desocupación nacional",
+      "tema": "Mercado laboral",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "531416",
+      "nombre": "Población ocupada",
+      "tema": "Mercado laboral",
+      "unidad": "Personas",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "531414",
+      "nombre": "Población económicamente activa",
+      "tema": "Mercado laboral",
+      "unidad": "Personas",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "628476",
+      "nombre": "PIB - Actividades primarias",
+      "tema": "Cuentas económicas",
+      "unidad": "Millones de pesos",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "628478",
+      "nombre": "PIB - Actividades secundarias",
+      "tema": "Cuentas económicas",
+      "unidad": "Millones de pesos",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "628480",
+      "nombre": "PIB - Actividades terciarias",
+      "tema": "Cuentas económicas",
+      "unidad": "Millones de pesos",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "444510",
+      "nombre": "Índice Global de Actividad Económica (IGAE)",
+      "tema": "Cuentas económicas",
+      "unidad": "Índice",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "444511",
+      "nombre": "IGAE - Variación anual",
+      "tema": "Cuentas económicas",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "628224",
+      "nombre": "Índice de Precios al Productor (IPP)",
+      "tema": "Precios e inflación",
+      "unidad": "Índice",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "289272",
+      "nombre": "Salario mínimo general diario",
+      "tema": "Ingresos y gastos",
+      "unidad": "Pesos",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "531428",
+      "nombre": "Tasa de participación económica",
+      "tema": "Mercado laboral",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    }
+  ]
+}

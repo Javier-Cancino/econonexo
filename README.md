@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EconoNexo
 
-## Getting Started
+Plataforma para obtener datos económicos de México de INEGI, Banxico y SHCP mediante un chat con IA.
 
-First, run the development server:
+## Configuración
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### 1. Variables de entorno
+
+Crea un archivo `.env` con las siguientes variables:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/econonexo?schema=public"
+NEXTAUTH_SECRET="genera-un-secreto-aleatorio"
+NEXTAUTH_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID="tu-google-client-id"
+GOOGLE_CLIENT_SECRET="tu-google-client-secret"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Obtener credenciales de Google OAuth
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crea un proyecto o selecciona uno existente
+3. Ve a "Credenciales" → "Crear credenciales" → "ID de cliente OAuth"
+4. Configura las URLs autorizadas:
+   - Origen: `http://localhost:3000`
+   - URI de redireccionamiento: `http://localhost:3000/api/auth/callback/google`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Base de datos
 
-## Learn More
+```bash
+# Crear la base de datos PostgreSQL
+createdb econonexo
 
-To learn more about Next.js, take a look at the following resources:
+# Ejecutar migraciones
+npx prisma migrate dev --name init
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Instalar dependencias y ejecutar
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+## Uso
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Login**: Accede con tu cuenta de Google
+2. **Configuración**: Ve a Configuración y añade tus API Keys:
+   - **LLM**: OpenAI, Google AI o Groq (al menos una)
+   - **INEGI**: Token de [INEGI API](https://www.inegi.org.mx/servicios/api_indicadores.html)
+   - **Banxico**: Token de [SIE API](https://www.banxico.org.mx/SieAPIRest/service/v1/)
+   - **SHCP**: No requiere token (datos públicos)
+3. **Chat**: Escribe tu consulta en lenguaje natural
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Ejemplos de consultas
+
+- "Dame el tipo de cambio FIX de Banxico"
+- "PIB de México de INEGI"
+- "Deuda pública del Gobierno Federal de SHCP"
+- "Tasa de desocupación de INEGI"
+
+## APIs soportadas
+
+| Fuente | Descripción | Auth |
+|--------|-------------|------|
+| INEGI | Indicadores socioeconómicos | Token |
+| Banxico | Series financieras | Token |
+| SHCP | Finanzas públicas | Sin auth |
+
+## Tecnologías
+
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- Prisma ORM
+- PostgreSQL
+- NextAuth.js
+- OpenAI / Google AI / Groq APIs

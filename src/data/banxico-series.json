@@ -1,0 +1,130 @@
+{
+  "series": [
+    {
+      "id": "SF43707",
+      "nombre": "Reservas Internacionales",
+      "categoria": "Sector externo",
+      "unidad": "Millones de dólares",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF61745",
+      "nombre": "Tasa objetivo",
+      "categoria": "Tasas de interés",
+      "unidad": "Porcentaje",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF60648",
+      "nombre": "TIIE a 28 días",
+      "categoria": "Tasas de interés",
+      "unidad": "Porcentaje",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF60649",
+      "nombre": "TIIE a 91 días",
+      "categoria": "Tasas de interés",
+      "unidad": "Porcentaje",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF60633",
+      "nombre": "Cetes a 28 días",
+      "categoria": "Tasas de interés",
+      "unidad": "Porcentaje",
+      "frecuencia": "Semanal"
+    },
+    {
+      "id": "SF43718",
+      "nombre": "Tipo de cambio FIX (Pesos por Dólar)",
+      "categoria": "Tipo de cambio",
+      "unidad": "Pesos por dólar",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF60653",
+      "nombre": "Tipo de cambio fecha de liquidación",
+      "categoria": "Tipo de cambio",
+      "unidad": "Pesos por dólar",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF46410",
+      "nombre": "Euro",
+      "categoria": "Tipo de cambio",
+      "unidad": "Pesos por euro",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF46406",
+      "nombre": "Yen japonés",
+      "categoria": "Tipo de cambio",
+      "unidad": "Pesos por 100 yenes",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF46407",
+      "nombre": "Libra esterlina",
+      "categoria": "Tipo de cambio",
+      "unidad": "Pesos por libra",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF60632",
+      "nombre": "Dólar canadiense",
+      "categoria": "Tipo de cambio",
+      "unidad": "Pesos por dólar canadiense",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SP68257",
+      "nombre": "Valor de UDIS",
+      "categoria": "Unidades de cuenta",
+      "unidad": "Pesos por UDI",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF43936",
+      "nombre": "Índice de precios REPO",
+      "categoria": "Valores gubernamentales",
+      "unidad": "Índice",
+      "frecuencia": "Diaria"
+    },
+    {
+      "id": "SF282566",
+      "nombre": "Balanza de pagos - Cuenta corriente",
+      "categoria": "Sector externo",
+      "unidad": "Millones de dólares",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "SF282567",
+      "nombre": "Balanza de pagos - Cuenta financiera",
+      "categoria": "Sector externo",
+      "unidad": "Millones de dólares",
+      "frecuencia": "Trimestral"
+    },
+    {
+      "id": "SF179621",
+      "nombre": "Inflación mensual (INPC)",
+      "categoria": "Precios",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "SF179622",
+      "nombre": "Inflación anual (INPC)",
+      "categoria": "Precios",
+      "unidad": "Porcentaje",
+      "frecuencia": "Mensual"
+    },
+    {
+      "id": "SF6",
+      "nombre": "Índice Nacional de Precios al Consumidor (INPC)",
+      "categoria": "Precios",
+      "unidad": "Índice",
+      "frecuencia": "Mensual"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "datasets": [
+    {
+      "id": "deuda_publica",
+      "nombre": "Deuda Pública",
+      "descripcion": "Indicadores de deuda pública del Gobierno Federal, entidades paraestatales no financieras, entidades paraestatales financieras y sector público federal",
+      "url": "https://repodatos.atdt.gob.mx/s_hacienda_cred_publico/indicadores_fiscales/deuda_publica.csv",
+      "columnas": ["Periodo", "Concepto", "Valor"]
+    },
+    {
+      "id": "ingreso_gasto",
+      "nombre": "Ingreso, Gasto y Financiamiento Público",
+      "descripcion": "Indicadores fiscales como balances, ingresos, gastos, financiamiento del Gobierno Federal",
+      "url": "https://repodatos.atdt.gob.mx/s_hacienda_cred_publico/indicadores_fiscales/ingreso_gasto_finan.csv",
+      "columnas": ["Periodo", "Concepto", "Valor"]
+    },
+    {
+      "id": "transferencias",
+      "nombre": "Transferencias a Entidades Federativas",
+      "descripcion": "Transferencias federales a los estados",
+      "url": "https://repodatos.atdt.gob.mx/s_hacienda_cred_publico/indicadores_fiscales/transferencias_entidades_fed.csv",
+      "columnas": ["Periodo", "Entidad", "Concepto", "Valor"]
+    },
+    {
+      "id": "rfsp",
+      "nombre": "Requerimientos Financieros del Sector Público",
+      "descripcion": "Medición de las necesidades financieras del sector público",
+      "url": "https://repodatos.atdt.gob.mx/s_hacienda_cred_publico/indicadores_fiscales/rfsp.csv",
+      "columnas": ["Periodo", "Concepto", "Valor"]
+    },
+    {
+      "id": "deuda_amplia",
+      "nombre": "Saldo Histórico RFSP (Deuda Amplia)",
+      "descripcion": "Saldo histórico de los requerimientos financieros del sector público",
+      "url": "https://repodatos.atdt.gob.mx/s_hacienda_cred_publico/indicadores_fiscales/shrfsp_deuda_amplia_actual.csv",
+      "columnas": ["Periodo", "Concepto", "Valor"]
+    }
+  ]
+}
