@@ -10,16 +10,21 @@
     "seed:catalogs": "npx tsx scripts/seed-catalogs.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.30",
+    "@ai-sdk/groq": "^3.0.24",
+    "@ai-sdk/openai": "^3.0.30",
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
+    "ai": "^6.0.97",
     "bcryptjs": "^3.0.3",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
     "pg": "^8.18.0",
     "prisma": "^7.4.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
