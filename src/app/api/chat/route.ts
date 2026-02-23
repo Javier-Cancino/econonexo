@@ -759,15 +759,50 @@ export async function POST(request: Request) {
         )
 
         if (nextResponse.error) {
-          return NextResponse.json({
-            message: `Error del LLM: ${nextResponse.error}`,
-          })
+          return NextResponse.json({ message: `Error del LLM: ${nextResponse.error}` })
         }
 
         if (nextResponse.toolCalls.length > 0) {
-          lastToolCallId = toolCall.id
-          lastToolName = toolName
-          continue
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(toolResult),
+          } as any)
+          const assistantWithToolCall: any = { role: 'assistant', content: null }
+          assistantWithToolCall.tool_calls = nextResponse.toolCalls
+          messages.push(assistantWithToolCall)
+          const newToolCall = nextResponse.toolCalls[0]
+          const newToolName = newToolCall.function.name
+          const newToolArgs = JSON.parse(newToolCall.function.arguments)
+          console.log('[API] Chained tool call:', newToolName, newToolArgs)
+          const newToolResult = await executeToolCall(newToolName, newToolArgs, session.user.id)
+          if (!newToolResult || !('table' in newToolResult)) {
+            return NextResponse.json({
+              message: 'No pude obtener los datos del indicador encontrado.',
+            })
+          }
+          const chainedFinalResponse = await callLLMWithToolResult(
+            usedProvider.provider,
+            usedProvider.key,
+            messages,
+            newToolCall.id,
+            newToolName,
+            {
+              success: true,
+              source: newToolResult.source,
+              total_rows: newToolResult.table.length - 1,
+              columns: newToolResult.table[0],
+              data: newToolResult.table.slice(1, 21),
+            }
+          )
+          return NextResponse.json({
+            message: chainedFinalResponse || `Aquí están los datos de ${newToolResult.source}:`,
+            data: {
+              table: newToolResult.table,
+              csv: newToolResult.csv,
+              source: newToolResult.source,
+            },
+          })
         }
 
         return NextResponse.json({
@@ -789,11 +824,10 @@ export async function POST(request: Request) {
         toolName,
         {
           success: true,
-          data: {
-            rows: toolResult.table.length - 1,
-            columns: toolResult.table[0],
-            source: toolResult.source,
-          },
+          source: toolResult.source,
+          total_rows: toolResult.table.length - 1,
+          columns: toolResult.table[0],
+          data: toolResult.table.slice(1, 21),
         }
       )
 
