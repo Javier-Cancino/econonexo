@@ -61,15 +61,17 @@ model VerificationToken {
 }
 
 model InegiIndicador {
-  id          String @id
+  id          String                       @id
   descripcion String
+  embedding   Unsupported("vector(1536)")?
   
   @@map("inegi_indicadores")
 }
 
 model BanxicoSerie {
-  id     String @id
-  titulo String
+  id        String                       @id
+  titulo    String
+  embedding Unsupported("vector(1536)")?
   
   @@map("banxico_series")
 }

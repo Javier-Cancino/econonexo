@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:catalogs": "npx tsx scripts/seed-catalogs.ts"
+    "seed:catalogs": "npx tsx scripts/seed-catalogs.ts",
+    "import:banxico": "npx tsx scripts/import-banxico-catalog.ts",
+    "import:banxico:embeddings": "npx tsx scripts/import-banxico-with-embeddings.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.30",
@@ -18,9 +20,12 @@
     "@prisma/client": "^7.4.0",
     "ai": "^6.0.97",
     "bcryptjs": "^3.0.3",
+    "csv-parse": "^6.1.0",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
+    "openai": "^6.22.0",
     "pg": "^8.18.0",
+    "pgvector": "^0.2.1",
     "prisma": "^7.4.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -8,6 +8,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
 import { z } from 'zod'
+import OpenAI from 'openai'
 import { fetchInegiIndicator, parseInegiData } from '@/lib/sources/inegi'
 import { fetchBanxicoSeries, parseBanxicoData } from '@/lib/sources/banxico'
 import { fetchSHCPData, parseSHCPData, SHCPDataset } from '@/lib/sources/shcp'
@@ -24,42 +25,107 @@ type ErrorToolOutput = {
   indicator_id?: string
 }
 
+const openaiForEmbeddings = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
+})
+
+async function getQueryEmbedding(text: string): Promise<number[]> {
+  const response = await openaiForEmbeddings.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: text,
+  })
+  return response.data[0].embedding
+}
+
 async function searchCatalog(
   query: string,
   source: string
 ): Promise<{ id: string; descripcion: string }[]> {
+  const table = source === 'inegi' ? 'inegi_indicadores' : 'banxico_series'
+  const textCol = source === 'inegi' ? 'descripcion' : 'titulo'
+
   const normalized = query
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 
-  if (source === 'inegi') {
-    const results = await prisma.$queryRaw<{ id: string; descripcion: string }[]>`
-      SELECT id, descripcion,
-        ts_rank(to_tsvector('spanish', descripcion), plainto_tsquery('spanish', ${query})) AS rank
-      FROM inegi_indicadores
-      WHERE to_tsvector('spanish', descripcion) @@ plainto_tsquery('spanish', ${query})
-         OR descripcion ILIKE ${'%' + normalized + '%'}
-      ORDER BY rank DESC
-      LIMIT 10
-    `
-    return results
-  }
+  try {
+    const embedding = await getQueryEmbedding(query)
+    const vectorString = `[${embedding.join(',')}]`
 
-  if (source === 'banxico') {
-    const results = await prisma.$queryRaw<{ id: string; descripcion: string }[]>`
-      SELECT id, titulo AS descripcion,
-        ts_rank(to_tsvector('spanish', titulo), plainto_tsquery('spanish', ${query})) AS rank
-      FROM banxico_series
-      WHERE to_tsvector('spanish', titulo) @@ plainto_tsquery('spanish', ${query})
-         OR titulo ILIKE ${'%' + normalized + '%'}
-      ORDER BY rank DESC
+    const results = await prisma.$queryRawUnsafe<{ id: string; descripcion: string }[]>(`
+      WITH fts_search AS (
+        SELECT id,
+               ${textCol} AS descripcion,
+               ROW_NUMBER() OVER (
+                 ORDER BY ts_rank(
+                   to_tsvector('spanish', ${textCol}),
+                   plainto_tsquery('spanish', $1)
+                 ) DESC
+               ) AS rank
+        FROM ${table}
+        WHERE to_tsvector('spanish', ${textCol}) @@ plainto_tsquery('spanish', $1)
+           OR ${textCol} ILIKE $2
+        LIMIT 50
+      ),
+      semantic_search AS (
+        SELECT id,
+               ${textCol} AS descripcion,
+               ROW_NUMBER() OVER (
+                 ORDER BY embedding <=> $3::vector
+               ) AS rank
+        FROM ${table}
+        WHERE embedding IS NOT NULL
+        ORDER BY embedding <=> $3::vector
+        LIMIT 50
+      ),
+      rrf AS (
+        SELECT
+          COALESCE(f.id, s.id) AS id,
+          COALESCE(f.descripcion, s.descripcion) AS descripcion,
+          COALESCE(1.0 / (60 + f.rank), 0.0) +
+          COALESCE(1.0 / (60 + s.rank), 0.0) AS rrf_score
+        FROM fts_search f
+        FULL OUTER JOIN semantic_search s ON f.id = s.id
+      )
+      SELECT id, descripcion
+      FROM rrf
+      ORDER BY rrf_score DESC
       LIMIT 10
-    `
-    return results
-  }
+    `, query, `%${normalized}%`, vectorString)
 
-  return []
+    return results
+  } catch (error) {
+    console.error('[SEARCH] Hybrid search failed, falling back to FTS:', error)
+    
+    if (source === 'inegi') {
+      const results = await prisma.$queryRaw<{ id: string; descripcion: string }[]>`
+        SELECT id, descripcion,
+          ts_rank(to_tsvector('spanish', descripcion), plainto_tsquery('spanish', ${query})) AS rank
+        FROM inegi_indicadores
+        WHERE to_tsvector('spanish', descripcion) @@ plainto_tsquery('spanish', ${query})
+           OR descripcion ILIKE ${'%' + normalized + '%'}
+        ORDER BY rank DESC
+        LIMIT 10
+      `
+      return results
+    }
+
+    if (source === 'banxico') {
+      const results = await prisma.$queryRaw<{ id: string; descripcion: string }[]>`
+        SELECT id, titulo AS descripcion,
+          ts_rank(to_tsvector('spanish', titulo), plainto_tsquery('spanish', ${query})) AS rank
+        FROM banxico_series
+        WHERE to_tsvector('spanish', titulo) @@ plainto_tsquery('spanish', ${query})
+           OR titulo ILIKE ${'%' + normalized + '%'}
+        ORDER BY rank DESC
+        LIMIT 10
+      `
+      return results
+    }
+
+    return []
+  }
 }
 
 const SYSTEM_PROMPT = `Eres EconoNexo, un asistente especializado en consulta de datos económicos de México.
