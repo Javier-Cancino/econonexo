@@ -19,17 +19,14 @@ export async function fetchBanxicoSeries(
   seriesId: string,
   token: string,
   startDate?: string,
-  endDate?: string,
-  latest: boolean = false
+  endDate?: string
 ): Promise<BanxicoResponse | null> {
   let url: string
   
-  if (latest) {
-    url = `https://www.banxico.org.mx/SieAPIRest/service/v1/series/${seriesId}/datos/oportuno`
-  } else if (startDate && endDate) {
+  if (startDate && endDate) {
     url = `https://www.banxico.org.mx/SieAPIRest/service/v1/series/${seriesId}/datos/${startDate}/${endDate}`
   } else {
-    url = `https://www.banxico.org.mx/SieAPIRest/service/v1/series/${seriesId}/datos`
+    url = `https://www.banxico.org.mx/SieAPIRest/service/v1/series/${seriesId}/datos/oportuno`
   }
 
   console.log('[BANXICO] Fetching:', url)

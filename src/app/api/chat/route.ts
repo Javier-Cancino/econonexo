@@ -13,6 +13,17 @@ import { fetchBanxicoSeries, parseBanxicoData } from '@/lib/sources/banxico'
 import { fetchSHCPData, parseSHCPData, SHCPDataset } from '@/lib/sources/shcp'
 import { SHCP_DATASETS } from '@/lib/sources/shcp'
 
+type DataToolOutput = {
+  table: string[][]
+  csv: string
+  source: string
+}
+
+type ErrorToolOutput = {
+  error: 'not_found' | 'no_api_key' | 'fetch_failed'
+  indicator_id?: string
+}
+
 async function searchCatalog(
   query: string,
   source: string
@@ -73,11 +84,14 @@ SHCP (usa get_shcp_data directamente):
 ${SHCP_DATASETS.map(d => `- ${d.id}: ${d.name}`).join('\n')}
 
 INSTRUCCIONES:
-- Para INEGI o Banxico: si NO conoces el ID exacto, PRIMERO llama search_indicator
+- CRÍTICO - REGLA DE ORO: Para INEGI y Banxico, SIEMPRE debes llamar search_indicator PRIMERO antes de cualquier otra herramienta. NUNCA uses IDs de tu conocimiento previo o memoria. Los IDs de indicadores SOLO son válidos si provienen directamente del resultado de search_indicator en esta conversación. Si no encuentras resultados con una query, intenta con términos más cortos o diferentes.
 - Con los resultados de search_indicator, elige el ID más relevante y llama get_inegi_data o get_banxico_data
+- Cuando search_indicator devuelva múltiples resultados, lee cada descripción cuidadosamente. Si el usuario quiere una "tasa", selecciona el ID cuya descripción contenga "Tasa de Rendimiento". Evita IDs con "Plazo" o "Precio" salvo que el usuario los pida explícitamente.
 - Para SHCP puedes llamar get_shcp_data directamente con el dataset_id
 - Si hay ambigüedad, pregunta al usuario
 - Responde siempre en español de forma clara y concisa
+- UNA VEZ QUE OBTENGAS DATOS de get_inegi_data, get_banxico_data o get_shcp_data, NO llames más herramientas. Responde de inmediato con los datos.
+- NO repitas search_indicator si ya obtuviste datos exitosamente.
 
 CRÍTICO: Cuando recibas datos de una herramienta, USA EXACTAMENTE los valores que vienen en la tabla. NUNCA inventes ni estimes valores. Si la tabla dice "25415332.95", di "25,415,332.95". Si la unidad dice "1054", di "código de unidad 1054" — no inventes "Pesos" ni ninguna otra unidad. Describe los datos reales de la tabla, no ejemplos hipotéticos.`
 
@@ -152,9 +166,11 @@ function createTools(userId: string) {
       description: 'Obtiene series financieras del Banco de México (tipo de cambio, tasas, reservas, UDIS, etc.)',
       inputSchema: z.object({
         series_id: z.string().describe('ID de la serie Banxico (ej: SF43718 para tipo de cambio FIX, SF61745 para tasa objetivo)'),
+        start_date: z.string().optional().describe('Fecha inicio YYYY-MM-DD'),
+        end_date: z.string().optional().describe('Fecha fin YYYY-MM-DD'),
       }),
-      execute: async ({ series_id }) => {
-        console.log('[TOOL] get_banxico_data:', series_id)
+      execute: async ({ series_id, start_date, end_date }) => {
+        console.log('[TOOL] get_banxico_data:', series_id, start_date, end_date)
         
         const banxicoToken = await getApiKey(userId, 'banxico')
         if (!banxicoToken) {
@@ -162,7 +178,7 @@ function createTools(userId: string) {
           return { error: 'no_api_key', indicator_id: series_id }
         }
 
-        const data = await fetchBanxicoSeries(series_id, banxicoToken)
+        const data = await fetchBanxicoSeries(series_id, banxicoToken, start_date, end_date)
         if (data) {
           const parsed = parseBanxicoData(data)
           if (parsed) {
@@ -273,12 +289,11 @@ export async function POST(request: Request) {
 
         console.log('[API] Generation completed, steps:', result.steps.length)
 
-        const lastStepWithTable = result.steps
-          .toReversed()
+        const stepWithTable = result.steps
           .find(step => step.toolResults?.some((r: any) => r.output?.table))
 
-        if (lastStepWithTable) {
-          const toolResult = lastStepWithTable.toolResults.find((r: any) => r.output?.table)?.output
+        if (stepWithTable) {
+          const toolResult = stepWithTable.toolResults.find((r: any) => r.output?.table)?.output as DataToolOutput | undefined
           if (toolResult) {
             const responseMessage = result.text || `Aquí están los datos de ${toolResult.source}:`
             return NextResponse.json({
@@ -297,7 +312,7 @@ export async function POST(request: Request) {
           .find(step => step.toolResults?.some((r: any) => r.output?.error))
 
         if (errorStep) {
-          const errorResult = errorStep.toolResults.find((r: any) => r.output?.error)?.output
+          const errorResult = errorStep.toolResults.find((r: any) => r.output?.error)?.output as ErrorToolOutput | undefined
           if (errorResult?.error === 'not_found') {
             return NextResponse.json({
               message: `El indicador ${errorResult.indicator_id} no existe en INEGI o no está disponible. Intenta buscar con otros términos usando el catálogo.`,
