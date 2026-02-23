@@ -311,7 +311,7 @@ async function executeToolCall(
   toolName: string,
   args: Record<string, string>,
   userId: string
-): Promise<{ table: string[][]; csv: string; source: string } | { results: { id: string; descripcion: string }[] } | null> {
+): Promise<{ table: string[][]; csv: string; source: string } | { results: { id: string; descripcion: string }[] } | { error: string; indicator_id: string } | null> {
   console.log('[TOOL] Executing:', toolName, 'with args:', JSON.stringify(args))
   
   try {
@@ -328,16 +328,28 @@ async function executeToolCall(
         return null
       }
       
-      const data = await fetchInegiIndicator(args.indicator_id, inegiToken)
-      if (data) {
-        const parsed = parseInegiData(data)
-        if (parsed) {
-          console.log('[TOOL] INEGI data parsed:', parsed.table.length, 'rows')
-          return { ...parsed, source: 'INEGI' }
+      try {
+        const data = await fetchInegiIndicator(args.indicator_id, inegiToken)
+        if (data) {
+          const parsed = parseInegiData(data)
+          if (parsed) {
+            console.log('[TOOL] INEGI data parsed:', parsed.table.length, 'rows')
+            const catalog = loadInegiCatalog()
+            const indicatorInfo = catalog.find(item => item.id === args.indicator_id)
+            const nombre = indicatorInfo?.descripcion?.split('/')[0]?.trim() || args.indicator_id
+            return { ...parsed, source: `INEGI - ${nombre}` }
+          }
         }
+        console.log('[TOOL] INEGI data fetch/parse failed')
+        return null
+      } catch (error) {
+        if (error instanceof Error && error.message === 'INEGI_NOT_FOUND') {
+          console.log('[TOOL] INEGI indicator not found:', args.indicator_id)
+          return { error: 'not_found', indicator_id: args.indicator_id }
+        }
+        console.error('[TOOL] INEGI error:', error)
+        return null
       }
-      console.log('[TOOL] INEGI data fetch/parse failed')
-      return null
     }
 
     if (toolName === 'get_banxico_data') {
@@ -708,15 +720,25 @@ export async function POST(request: Request) {
 
       const toolResult = await executeToolCall(toolName, toolArgs, session.user.id)
 
+      if (toolResult && 'error' in toolResult && toolResult.error === 'not_found') {
+        return NextResponse.json({
+          message: `El indicador ${toolResult.indicator_id} no existe en INEGI o no está disponible. Intenta buscar con otros términos usando el catálogo.`,
+        })
+      }
+
       if (!toolResult) {
         const missingKey = 
-          toolName === 'get_inegi_data' ? 'INEGI' :
-          toolName === 'get_banxico_data' ? 'Banxico' : null
+          toolName === 'get_inegi_data' ? 'inegi' :
+          toolName === 'get_banxico_data' ? 'banxico' : null
         
         if (missingKey) {
-          return NextResponse.json({
-            message: `No tienes configurada la API Key de ${missingKey}. Ve a Configuración y añade tu token de ${missingKey}.`,
-          })
+          const hasKey = await getApiKey(session.user.id, missingKey)
+          if (!hasKey) {
+            const keyName = missingKey.toUpperCase()
+            return NextResponse.json({
+              message: `No tienes configurada la API Key de ${keyName}. Ve a Configuración y añade tu token de ${keyName}.`,
+            })
+          }
         }
         
         return NextResponse.json({
@@ -756,6 +778,12 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           message: nextResponse.content || 'Encontré estos indicadores en el catálogo.',
+        })
+      }
+
+      if (!('table' in toolResult)) {
+        return NextResponse.json({
+          message: 'Error inesperado al procesar los datos.',
         })
       }
 

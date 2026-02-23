@@ -28,20 +28,27 @@ export async function fetchInegiIndicator(
   recent: boolean = false
 ): Promise<InegiResponse | null> {
   const reciente = recent ? 'true' : 'false'
-  const url = `https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/${indicatorId}/es/${area}/${reciente}/BIE/2.0/${token}?type=json`
+  const url = `https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/${indicatorId}/es/${area}/${reciente}/BIE-BISE/2.0/${token}?type=json`
 
   console.log('[INEGI] Fetching:', url.replace(token, 'TOKEN'))
-  
+
   try {
     const response = await fetch(url)
     if (!response.ok) {
-      console.error('[INEGI] API error:', response.status)
+      const text = await response.text()
+      console.error('[INEGI] API error:', response.status, 'body:', text)
+      if (text.includes('ErrorCode:100')) {
+        throw new Error('INEGI_NOT_FOUND')
+      }
       throw new Error(`INEGI API error: ${response.status}`)
     }
     const data = await response.json()
     console.log('[INEGI] Response received, Series count:', data.Series?.length || 0)
     return data as InegiResponse
   } catch (error) {
+    if (error instanceof Error && error.message === 'INEGI_NOT_FOUND') {
+      throw error
+    }
     console.error('[INEGI] Error:', error)
     return null
   }
@@ -64,10 +71,10 @@ export function parseInegiData(data: InegiResponse): { table: string[][]; csv: s
   console.log('[INEGI] Parsing', observations.length, 'observations, LASTUPDATE:', series.LASTUPDATE)
 
   const table: string[][] = []
-  table.push(['Periodo', 'Valor', 'Indicador', 'UltimaActualizacion'])
+  table.push(['Periodo', 'Valor', 'Unidad', 'UltimaActualizacion'])
 
   for (const obs of observations) {
-    table.push([obs.TIME_PERIOD, obs.OBS_VALUE, series.INDICADOR, series.LASTUPDATE])
+    table.push([obs.TIME_PERIOD, obs.OBS_VALUE, series.UNIT, series.LASTUPDATE])
   }
 
   const csv = table.map((row) => row.map(cell => `"${cell}"`).join(',')).join('\n')
