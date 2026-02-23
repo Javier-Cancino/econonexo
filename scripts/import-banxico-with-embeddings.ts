@@ -10,15 +10,18 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const voyageClient = new OpenAI({ 
+  apiKey: process.env.VOYAGE_API_KEY,
+  baseURL: 'https://api.voyageai.com/v1'
+})
 
 const CATALOG_PATH = '/Users/fjgc/econonexo/banxico_catalogo.csv'
 const BATCH_SIZE = 50
 const EMBED_BATCH = 100
 
 async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
+  const response = await voyageClient.embeddings.create({
+    model: 'voyage-3-lite',
     input: texts,
   })
   return response.data.map(d => d.embedding)

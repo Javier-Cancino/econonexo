@@ -25,13 +25,24 @@ type ErrorToolOutput = {
   indicator_id?: string
 }
 
-const openaiForEmbeddings = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
+const voyageClient = new OpenAI({
+  apiKey: process.env.VOYAGE_API_KEY || '',
+  baseURL: 'https://api.voyageai.com/v1'
 })
 
-async function getQueryEmbedding(text: string): Promise<number[]> {
-  const response = await openaiForEmbeddings.embeddings.create({
-    model: 'text-embedding-3-small',
+async function getQueryEmbedding(text: string, voyageApiKey?: string): Promise<number[]> {
+  const apiKey = voyageApiKey || process.env.VOYAGE_API_KEY
+  if (!apiKey) {
+    throw new Error('VOYAGE_API_KEY not configured')
+  }
+  
+  const client = voyageApiKey ? new OpenAI({
+    apiKey: voyageApiKey,
+    baseURL: 'https://api.voyageai.com/v1'
+  }) : voyageClient
+  
+  const response = await client.embeddings.create({
+    model: 'voyage-3-lite',
     input: text,
   })
   return response.data[0].embedding
@@ -39,7 +50,8 @@ async function getQueryEmbedding(text: string): Promise<number[]> {
 
 async function searchCatalog(
   query: string,
-  source: string
+  source: string,
+  userId?: string
 ): Promise<{ id: string; descripcion: string }[]> {
   const table = source === 'inegi' ? 'inegi_indicadores' : 'banxico_series'
   const textCol = source === 'inegi' ? 'descripcion' : 'titulo'
@@ -49,8 +61,13 @@ async function searchCatalog(
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 
+  let voyageApiKey: string | undefined
+  if (userId) {
+    voyageApiKey = await getApiKey(userId, 'voyage') || undefined
+  }
+
   try {
-    const embedding = await getQueryEmbedding(query)
+    const embedding = await getQueryEmbedding(query, voyageApiKey)
     const vectorString = `[${embedding.join(',')}]`
 
     const results = await prisma.$queryRawUnsafe<{ id: string; descripcion: string }[]>(`
@@ -182,7 +199,7 @@ function createTools(userId: string) {
       }),
       execute: async ({ query, source }) => {
         console.log('[TOOL] search_indicator:', query, source)
-        const results = await searchCatalog(query, source)
+        const results = await searchCatalog(query, source, userId)
         console.log('[TOOL] Search results:', results.length, 'matches')
         return { results }
       },
@@ -285,8 +302,16 @@ function createTools(userId: string) {
 }
 
 function isQuotaError(error: string): boolean {
-  const quotaKeywords = ['quota', 'rate limit', 'exceeded', 'limit: 0', '429']
-  return quotaKeywords.some(keyword => error.toLowerCase().includes(keyword))
+  const quotaKeywords = [
+    'quota',
+    'rate limit',
+    'exceeded',
+    'limit: 0',
+    '429',
+    'Rate limit reached',
+    'TPD:',
+  ]
+  return quotaKeywords.some(keyword => error.toLowerCase().includes(keyword.toLowerCase()))
 }
 
 export async function POST(request: Request) {
@@ -310,7 +335,7 @@ export async function POST(request: Request) {
     const providers: { name: string; key: string; model: string }[] = []
     if (groqKey) providers.push({ name: 'groq', key: groqKey, model: 'llama-3.3-70b-versatile' })
     if (openaiKey) providers.push({ name: 'openai', key: openaiKey, model: 'gpt-4o-mini' })
-    if (googleKey) providers.push({ name: 'google', key: googleKey, model: 'gemini-2.0-flash' })
+    if (googleKey) providers.push({ name: 'google', key: googleKey, model: 'gemini-1.5-flash-002' })
 
     if (providers.length === 0) {
       console.log('[API] No LLM key found for user')

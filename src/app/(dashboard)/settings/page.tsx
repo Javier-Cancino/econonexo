@@ -15,6 +15,7 @@ const providers = [
   { id: 'openai', name: 'OpenAI', description: 'GPT-4, GPT-3.5', placeholder: 'sk-...' },
   { id: 'google', name: 'Google AI', description: 'Gemini', placeholder: 'AIza...' },
   { id: 'groq', name: 'Groq', description: 'Llama, Mixtral', placeholder: 'gsk_...' },
+  { id: 'voyage', name: 'Voyage AI', description: 'Embeddings (25M tokens gratis/mes)', placeholder: 'pa-...' },
   { id: 'inegi', name: 'INEGI', description: 'Token de API INEGI', placeholder: 'Token INEGI' },
   { id: 'banxico', name: 'Banxico', description: 'Token SIE Banxico', placeholder: 'Token Banxico' },
 ]
@@ -205,6 +206,64 @@ export default function SettingsPage() {
                   </div>
                 ))}
             </div>
+          </div>
+
+          <div className='rounded-lg border bg-white p-4'>
+            <h3 className='mb-3 font-semibold text-gray-700'>Búsqueda Semántica</h3>
+            <div className='space-y-3'>
+              {providers
+                .filter((p) => p.id === 'voyage')
+                .map((provider) => (
+                  <div key={provider.id} className='flex items-center gap-3'>
+                    <div className='w-32'>
+                      <span className='font-medium'>{provider.name}</span>
+                      <span className='block text-xs text-gray-500'>{provider.description}</span>
+                    </div>
+                    <input
+                      type='password'
+                      placeholder={provider.placeholder}
+                      value={keyValues[provider.id] || ''}
+                      onChange={(e) =>
+                        setKeyValues((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                      }
+                      className='flex-1 rounded-lg border px-3 py-2 text-sm'
+                    />
+                    {hasKey(provider.id) ? (
+                      <div className='flex gap-2'>
+                        <span className='rounded bg-green-100 px-2 py-1 text-xs text-green-700'>
+                          Guardado
+                        </span>
+                        <button
+                          onClick={() => deleteKey(provider.id)}
+                          className='rounded bg-red-100 px-2 py-1 text-xs text-red-700 hover:bg-red-200'
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => saveKey(provider.id)}
+                        disabled={saving === provider.id || !keyValues[provider.id]}
+                        className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300'
+                      >
+                        {saving === provider.id ? 'Guardando...' : 'Guardar'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+            <p className='mt-3 text-xs text-gray-500'>
+              Registrarse gratis en{' '}
+              <a
+                href='https://www.voyageai.com/'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-blue-600 hover:underline'
+              >
+                voyageai.com
+              </a>{' '}
+              — Tier gratuito: 25 millones de tokens/mes
+            </p>
           </div>
 
           <div className='rounded-lg bg-amber-50 p-4'>
