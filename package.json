@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed:catalogs": "npx tsx scripts/seed-catalogs.ts",
     "import:banxico": "npx tsx scripts/import-banxico-catalog.ts",
-    "import:banxico:embeddings": "npx tsx scripts/import-banxico-with-embeddings.ts"
+    "import:banxico:embeddings": "npx tsx scripts/import-banxico-with-embeddings.ts",
+    "generate:embeddings": "npx tsx scripts/generate-embeddings.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.30",

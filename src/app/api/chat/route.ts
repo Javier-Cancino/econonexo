@@ -175,6 +175,14 @@ INSTRUCCIONES:
 - Responde siempre en español de forma clara y concisa
 - UNA VEZ QUE OBTENGAS DATOS de get_inegi_data, get_banxico_data o get_shcp_data, NO llames más herramientas. Responde de inmediato con los datos.
 - NO repitas search_indicator si ya obtuviste datos exitosamente.
+- FECHAS PARA SERIES HISTÓRICAS: Cuando el usuario pida "serie histórica", "últimos X meses/años", o datos de un período específico, DEBES incluir start_date y end_date en get_banxico_data. Formato: YYYY-MM-DD. Ejemplos:
+  • "últimos 6 meses" → start_date: fecha de hace 6 meses desde hoy, end_date: fecha de hoy
+  • "datos de 2023" → start_date: "2023-01-01", end_date: "2023-12-31"
+  • "últimos 3 años" → start_date: hace 3 años desde hoy, end_date: hoy
+  • "últimos 10 datos" → start_date: hace 15 días desde hoy, end_date: hoy
+  • "octubre 2025" → start_date: "2025-10-01", end_date: "2025-10-31"
+  • Si el usuario NO especifica período, NO pases start_date ni end_date (traerá solo el último dato disponible)
+  • FECHA ACTUAL: ${new Date().toISOString().split('T')[0]}
 
 CRÍTICO: Cuando recibas datos de una herramienta, USA EXACTAMENTE los valores que vienen en la tabla. NUNCA inventes ni estimes valores. Si la tabla dice "25415332.95", di "25,415,332.95". Si la unidad dice "1054", di "código de unidad 1054" — no inventes "Pesos" ni ninguna otra unidad. Describe los datos reales de la tabla, no ejemplos hipotéticos.`
 
@@ -314,6 +322,11 @@ function isQuotaError(error: string): boolean {
   return quotaKeywords.some(keyword => error.toLowerCase().includes(keyword.toLowerCase()))
 }
 
+function isToolCallError(error: string): boolean {
+  return error.includes('tool_use_failed') || 
+         error.includes('Failed to call a function')
+}
+
 export async function POST(request: Request) {
   console.log('[API] POST /api/chat received')
 
@@ -335,7 +348,7 @@ export async function POST(request: Request) {
     const providers: { name: string; key: string; model: string }[] = []
     if (groqKey) providers.push({ name: 'groq', key: groqKey, model: 'llama-3.3-70b-versatile' })
     if (openaiKey) providers.push({ name: 'openai', key: openaiKey, model: 'gpt-4o-mini' })
-    if (googleKey) providers.push({ name: 'google', key: googleKey, model: 'gemini-1.5-flash-002' })
+    if (googleKey) providers.push({ name: 'google', key: googleKey, model: 'gemini-1.5-flash-latest' })
 
     if (providers.length === 0) {
       console.log('[API] No LLM key found for user')
@@ -351,88 +364,100 @@ export async function POST(request: Request) {
 
     for (const provider of providers) {
       console.log(`[API] Trying provider: ${provider.name}`)
-
-      try {
-        let model: LanguageModel
-        if (provider.name === 'groq') {
-          const groq = createGroq({ apiKey: provider.key })
-          model = groq(provider.model)
-        } else if (provider.name === 'openai') {
-          const openai = createOpenAI({ apiKey: provider.key })
-          model = openai(provider.model)
-        } else if (provider.name === 'google') {
-          const google = createGoogleGenerativeAI({ apiKey: provider.key })
-          model = google(provider.model)
-        } else {
-          continue
-        }
-
-        const result = await generateText({
-          model,
-          system: SYSTEM_PROMPT,
-          prompt: message,
-          tools,
-          stopWhen: stepCountIs(5),
-          onStepFinish: ({ stepNumber, toolCalls }) => {
-            console.log(`[API] Step ${stepNumber} finished, tool calls:`, toolCalls?.length || 0)
-          },
-        })
-
-        console.log('[API] Generation completed, steps:', result.steps.length)
-
-        const stepWithTable = result.steps
-          .find(step => step.toolResults?.some((r: any) => r.output?.table))
-
-        if (stepWithTable) {
-          const toolResult = stepWithTable.toolResults.find((r: any) => r.output?.table)?.output as DataToolOutput | undefined
-          if (toolResult) {
-            const responseMessage = result.text || `Aquí están los datos de ${toolResult.source}:`
-            return NextResponse.json({
-              message: responseMessage,
-              data: {
-                table: toolResult.table,
-                csv: toolResult.csv,
-                source: toolResult.source,
-              },
-            })
+      
+      const MAX_RETRIES = 2
+      let attempt = 0
+      
+      while (attempt <= MAX_RETRIES) {
+        try {
+          let model: LanguageModel
+          if (provider.name === 'groq') {
+            const groq = createGroq({ apiKey: provider.key })
+            model = groq(provider.model)
+          } else if (provider.name === 'openai') {
+            const openai = createOpenAI({ apiKey: provider.key })
+            model = openai(provider.model)
+          } else if (provider.name === 'google') {
+            const google = createGoogleGenerativeAI({ apiKey: provider.key })
+            model = google(provider.model)
+          } else {
+            break
           }
-        }
 
-        const errorStep = result.steps
-          .toReversed()
-          .find(step => step.toolResults?.some((r: any) => r.output?.error))
+          const result = await generateText({
+            model,
+            system: SYSTEM_PROMPT,
+            prompt: message,
+            tools,
+            stopWhen: stepCountIs(5),
+            onStepFinish: ({ stepNumber, toolCalls }) => {
+              console.log(`[API] Step ${stepNumber} finished, tool calls:`, toolCalls?.length || 0)
+            },
+          })
 
-        if (errorStep) {
-          const errorResult = errorStep.toolResults.find((r: any) => r.output?.error)?.output as ErrorToolOutput | undefined
-          if (errorResult?.error === 'not_found') {
-            return NextResponse.json({
-              message: `El indicador ${errorResult.indicator_id} no existe en INEGI o no está disponible. Intenta buscar con otros términos usando el catálogo.`,
-            })
+          console.log('[API] Generation completed, steps:', result.steps.length)
+
+          const stepWithTable = result.steps
+            .find(step => step.toolResults?.some((r: any) => r.output?.table))
+
+          if (stepWithTable) {
+            const toolResult = stepWithTable.toolResults.find((r: any) => r.output?.table)?.output as DataToolOutput | undefined
+            if (toolResult) {
+              const responseMessage = result.text || `Aquí están los datos de ${toolResult.source}:`
+              return NextResponse.json({
+                message: responseMessage,
+                data: {
+                  table: toolResult.table,
+                  csv: toolResult.csv,
+                  source: toolResult.source,
+                },
+              })
+            }
           }
-          if (errorResult?.error === 'no_api_key') {
-            const keyName = errorResult.indicator_id?.startsWith('SF') ? 'BANXICO' : 'INEGI'
-            return NextResponse.json({
-              message: `No tienes configurada la API Key de ${keyName}. Ve a Configuración y añade tu token de ${keyName}.`,
-            })
+
+          const errorStep = result.steps
+            .toReversed()
+            .find(step => step.toolResults?.some((r: any) => r.output?.error))
+
+          if (errorStep) {
+            const errorResult = errorStep.toolResults.find((r: any) => r.output?.error)?.output as ErrorToolOutput | undefined
+            if (errorResult?.error === 'not_found') {
+              return NextResponse.json({
+                message: `El indicador ${errorResult.indicator_id} no existe en INEGI o no está disponible. Intenta buscar con otros términos usando el catálogo.`,
+              })
+            }
+            if (errorResult?.error === 'no_api_key') {
+              const keyName = errorResult.indicator_id?.startsWith('SF') ? 'BANXICO' : 'INEGI'
+              return NextResponse.json({
+                message: `No tienes configurada la API Key de ${keyName}. Ve a Configuración y añade tu token de ${keyName}.`,
+              })
+            }
           }
-        }
 
-        return NextResponse.json({
-          message: result.text || 'No pude procesar tu solicitud.',
-        })
+          return NextResponse.json({
+            message: result.text || 'No pude procesar tu solicitud.',
+          })
 
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error(`[API] Provider ${provider.name} error:`, errorMessage)
-        
-        if (isQuotaError(errorMessage)) {
-          lastError = errorMessage
-          continue
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          
+          if (isToolCallError(errorMessage) && attempt < MAX_RETRIES) {
+            attempt++
+            console.log(`[API] Tool call error, retrying (${attempt}/${MAX_RETRIES})...`)
+            await new Promise(r => setTimeout(r, 500))
+            continue
+          }
+          
+          if (isQuotaError(errorMessage)) {
+            lastError = errorMessage
+            break
+          }
+          
+          console.error(`[API] Provider ${provider.name} error:`, errorMessage)
+          return NextResponse.json({
+            message: `Error del LLM: ${errorMessage}`,
+          })
         }
-        
-        return NextResponse.json({
-          message: `Error del LLM: ${errorMessage}`,
-        })
       }
     }
 

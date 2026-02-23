@@ -33,10 +33,30 @@ async function main() {
   const records = parse(content, { columns: true, skip_empty_lines: true, trim: true }) as any[]
   console.log(`📊 Total registros: ${records.length}`)
 
-  const items = records.map((r: any) => ({
-    id: r.clave,
-    titulo: `${r.ruta_serie} > ${r.nombre_serie}`,
-  }))
+  const items = records
+    .map((r: any) => {
+      const ruta = (r.ruta_serie || '').trim()
+      const nombre = (r.nombre_serie || '').trim()
+      const clave = (r.clave || '').trim()
+      
+      if (!clave) return null
+      
+      let titulo = ''
+      if (ruta && nombre) {
+        titulo = `${ruta} > ${nombre}`
+      } else if (ruta) {
+        titulo = ruta
+      } else if (nombre) {
+        titulo = nombre
+      } else {
+        return null
+      }
+      
+      return { id: clave, titulo }
+    })
+    .filter((item): item is { id: string; titulo: string } => item !== null)
+  
+  console.log(`📊 Registros válidos después de filtrar: ${items.length}`)
 
   console.log('🗑️  Limpiando tabla banxico_series...')
   await prisma.$executeRaw`TRUNCATE TABLE banxico_series`

@@ -23,10 +23,30 @@ async function importBanxicoCatalog() {
   
   console.log(`📊 Total de registros en CSV: ${records.length}`)
   
-  const transformed = records.map((row: any) => ({
-    id: row.clave,
-    titulo: `${row.ruta_serie} > ${row.nombre_serie}`,
-  }))
+  const transformed = records
+    .map((row: any) => {
+      const ruta = (row.ruta_serie || '').trim()
+      const nombre = (row.nombre_serie || '').trim()
+      const clave = (row.clave || '').trim()
+      
+      if (!clave) return null
+      
+      let titulo = ''
+      if (ruta && nombre) {
+        titulo = `${ruta} > ${nombre}`
+      } else if (ruta) {
+        titulo = ruta
+      } else if (nombre) {
+        titulo = nombre
+      } else {
+        return null
+      }
+      
+      return { id: clave, titulo }
+    })
+    .filter((item): item is { id: string; titulo: string } => item !== null)
+  
+  console.log(`📊 Registros válidos después de filtrar: ${transformed.length}`)
   
   const existingCount = await prisma.banxicoSerie.count()
   console.log(`📦 Registros actuales en DB: ${existingCount}`)
