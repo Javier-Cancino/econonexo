@@ -6,55 +6,42 @@ import { fetchInegiIndicator, parseInegiData } from '@/lib/sources/inegi'
 import { fetchBanxicoSeries, parseBanxicoData } from '@/lib/sources/banxico'
 import { fetchSHCPData, parseSHCPData, SHCPDataset } from '@/lib/sources/shcp'
 import { SHCP_DATASETS } from '@/lib/sources/shcp'
-import fs from 'fs'
-import path from 'path'
 
-interface InegiIndicator {
-  id: string
-  descripcion: string
-}
+async function searchCatalog(
+  query: string,
+  source: string
+): Promise<{ id: string; descripcion: string }[]> {
+  const normalized = query
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 
-interface BanxicoSerie {
-  id: string
-  titulo: string
-}
-
-let inegiCatalog: InegiIndicator[] | null = null
-let banxicoCatalog: BanxicoSerie[] | null = null
-
-function loadInegiCatalog(): InegiIndicator[] {
-  if (inegiCatalog) return inegiCatalog
-  const filePath = path.join(process.cwd(), 'public', 'data', 'inegi-catalogo.json')
-  const content = fs.readFileSync(filePath, 'utf-8')
-  inegiCatalog = JSON.parse(content)
-  return inegiCatalog!
-}
-
-function loadBanxicoCatalog(): BanxicoSerie[] {
-  if (banxicoCatalog) return banxicoCatalog
-  const filePath = path.join(process.cwd(), 'public', 'data', 'banxico-catalogo.json')
-  const content = fs.readFileSync(filePath, 'utf-8')
-  banxicoCatalog = JSON.parse(content)
-  return banxicoCatalog!
-}
-
-function searchCatalog(query: string, source: string): { id: string; descripcion: string }[] {
-  const q = query.toLowerCase()
-  const limit = 10
-  
   if (source === 'inegi') {
-    const catalog = loadInegiCatalog()
-    return catalog
-      .filter(item => item.descripcion.toLowerCase().includes(q))
-      .slice(0, limit)
-      .map(item => ({ id: item.id, descripcion: item.descripcion }))
-  } else if (source === 'banxico') {
-    const catalog = loadBanxicoCatalog()
-    return catalog
-      .filter(item => item.titulo.toLowerCase().includes(q))
-      .slice(0, limit)
-      .map(item => ({ id: item.id, descripcion: item.titulo }))
+    const results = await prisma.$queryRaw<{ id: string; descripcion: string }[]>`
+      SELECT id, descripcion,
+        ts_rank(to_tsvector('spanish', descripcion), plainto_tsquery('spanish', ${query})) AS rank
+      FROM inegi_indicadores
+      WHERE to_tsvector('spanish', descripcion) @@ plainto_tsquery('spanish', ${query})
+         OR descripcion ILIKE ${'%' + normalized + '%'}
+      ORDER BY rank DESC
+      LIMIT 10
+    `
+    return results
   }
+
+  if (source === 'banxico') {
+    const results = await prisma.$queryRaw<{ id: string; descripcion: string }[]>`
+      SELECT id, titulo AS descripcion,
+        ts_rank(to_tsvector('spanish', titulo), plainto_tsquery('spanish', ${query})) AS rank
+      FROM banxico_series
+      WHERE to_tsvector('spanish', titulo) @@ plainto_tsquery('spanish', ${query})
+         OR titulo ILIKE ${'%' + normalized + '%'}
+      ORDER BY rank DESC
+      LIMIT 10
+    `
+    return results
+  }
+
   return []
 }
 
@@ -84,7 +71,9 @@ INSTRUCCIONES:
 - Con los resultados de search_indicator, elige el ID más relevante y llama get_inegi_data o get_banxico_data
 - Para SHCP puedes llamar get_shcp_data directamente con el dataset_id
 - Si hay ambigüedad, pregunta al usuario
-- Responde siempre en español de forma clara y concisa`
+- Responde siempre en español de forma clara y concisa
+
+CRÍTICO: Cuando recibas datos de una herramienta, USA EXACTAMENTE los valores que vienen en la tabla. NUNCA inventes ni estimes valores. Si la tabla dice "25415332.95", di "25,415,332.95". Si la unidad dice "1054", di "código de unidad 1054" — no inventes "Pesos" ni ninguna otra unidad. Describe los datos reales de la tabla, no ejemplos hipotéticos.`
 
 const TOOLS = [
   {
@@ -316,7 +305,7 @@ async function executeToolCall(
   
   try {
     if (toolName === 'search_indicator') {
-      const results = searchCatalog(args.query, args.source)
+      const results = await searchCatalog(args.query, args.source)
       console.log('[TOOL] Search results:', results.length, 'matches')
       return { results }
     }
@@ -334,8 +323,9 @@ async function executeToolCall(
           const parsed = parseInegiData(data)
           if (parsed) {
             console.log('[TOOL] INEGI data parsed:', parsed.table.length, 'rows')
-            const catalog = loadInegiCatalog()
-            const indicatorInfo = catalog.find(item => item.id === args.indicator_id)
+            const indicatorInfo = await prisma.inegiIndicador.findUnique({
+              where: { id: args.indicator_id }
+            })
             const nombre = indicatorInfo?.descripcion?.split('/')[0]?.trim() || args.indicator_id
             return { ...parsed, source: `INEGI - ${nombre}` }
           }
@@ -364,7 +354,11 @@ async function executeToolCall(
         const parsed = parseBanxicoData(data)
         if (parsed) {
           console.log('[TOOL] Banxico data parsed:', parsed.table.length, 'rows')
-          return { ...parsed, source: 'Banxico' }
+          const serieInfo = await prisma.banxicoSerie.findUnique({
+            where: { id: args.series_id }
+          })
+          const nombre = serieInfo?.titulo?.split('.')[0]?.trim() || args.series_id
+          return { ...parsed, source: `Banxico - ${nombre}` }
         }
       }
       console.log('[TOOL] Banxico data fetch/parse failed')

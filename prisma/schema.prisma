@@ -59,3 +59,17 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+model InegiIndicador {
+  id          String @id
+  descripcion String
+  
+  @@map("inegi_indicadores")
+}
+
+model BanxicoSerie {
+  id     String @id
+  titulo String
+  
+  @@map("banxico_series")
+}
